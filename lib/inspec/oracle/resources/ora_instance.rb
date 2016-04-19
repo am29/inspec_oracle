@@ -11,9 +11,10 @@ class OraInstance < Inspec.resource(1)
   end
 
   def running?
-    cmd = inspec.command("ps aux | grep oracle | grep _#{@sid}")
-    processes = cmd.stdout.split("\n")[1..-1]
-    processes.size >= 34   # If all 34 processes are running
+    cmd = inspec.command("ps aux | grep #{@os_user} | grep _#{@sid}")
+    # check for processes pmon and smon
+    processes = cmd.stdout.each_line.select {|l| l =~ /^#{@os_user}.*_(p|s)mon_#{@sid}$/}
+    processes.size == 2
   end
 
   def connectable?
