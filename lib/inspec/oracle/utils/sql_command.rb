@@ -1,4 +1,5 @@
 require_relative '../../helpers'
+require 'securerandom'
 
 module Oracle
   class SqlCommand
@@ -44,23 +45,23 @@ module Oracle
       template_file = (Pathname.new(__FILE__).dirname + 'execute.sql.erb')
       template = File.read(template_file)
       input_file  = tempfile_name(['input', '.sql'])
-      remote_file = "/tmp/" + Pathname(input_file).basename.to_s
-      output_file = "/tmp/" + Pathname(tempfile_name(['output', '.csv'])).basename.to_s
+      remote_file = tempfile_name(['input', '.sql'])
+      output_file = tempfile_name(['output', '.csv'])
       content = ERB.new(template, nil, '-').result(binding)
       File.open(input_file, 'w') { |f| f.write(content) }
       @context.inspec.backend.upload(input_file, remote_file)
       @context.inspec.command("chown #{@os_user} #{remote_file}").stdout
       @context.inspec.command(command_string("@#{remote_file}")).stdout
       output = @context.inspec.file(output_file).content
+      @context.inspec.command("rm #{remote_file} #{output_file}").stdout
+      File.unlink(input_file)
       convert_csv_data_to_hash(output)
     end
 
     private
 
     def tempfile_name(options = [])
-      tmp_file = Tempfile.new(options)
-      path = tmp_file.path
-      path
+      "/tmp/#{options[0]}-#{SecureRandom.hex(10)}#{options[1]}"
     end
 
     def asm_sid?
